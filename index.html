@@ -3,189 +3,240 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Code Editor</title>
-  <link rel="stylesheet" href="codemirror-5.65.19/lib/codemirror.css" />
-  <link rel="stylesheet" href="codemirror-5.65.19/theme/dracula.css" />
-  <link rel="stylesheet" href="codemirror-5.65.19/addon/hint/show-hint.css" />
+  <title>Code Editor with AI Assistant</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #121212;
-      color: #eee;
+      background: #121212; color: #eee;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    select:hover, button:hover { background: #3b3b3b; box-shadow: 0 0 8px 2px #64b5f6; }
+    button:focus, select:focus { outline: 2px solid #64b5f6; box-shadow: 0 0 10px 3px #64b5f6; }
+    header {
+      background: #1f1f1f; padding: 1rem 2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #282828;
+    }
+    header h1 { font-weight: 700; letter-spacing: 1.5px; font-size: 1.5rem; user-select: none; }
+    .controls { display: flex; gap: 1rem; align-items: center; }
+    select, button {
+      background: #272727; border: none; color: #eee;
+      padding: 0.5rem 1rem; font-size: 1rem; border-radius: 6px;
+      cursor: pointer; transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    select:hover, button:hover { background: #3b3b3b; color: #fff; }
+    button i { font-size: 1.3rem; vertical-align: middle; }
+    main { flex: 1; display: flex; gap: 1.5rem; padding: 1rem 2rem; background: #1a1a1a; }
+    .editor-container {
+      flex: 2; background: #282c34; border-radius: 8px;
+      overflow: hidden; box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    }
+    #editor { height: 100%; min-height: 600px; }
+    .io-container {
+      flex: 1; display: flex; flex-direction: column; gap: 1rem;
+      background: #222; border-radius: 8px; padding: 1rem;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.6); color: #ccc;
+    }
+    label { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; user-select: none; }
+    textarea {
+      resize: vertical; min-height: 120px; max-height: 250px; width: 100%;
+      border-radius: 6px; border: none; padding: 0.8rem; font-family: monospace;
+      font-size: 1rem; background-color: #1e1e1e; color: #ddd; box-shadow: inset 0 0 5px #111;
+      transition: box-shadow 0.3s ease;
+    }
+    textarea:focus { outline: none; box-shadow: inset 0 0 8px #64b5f6; }
+    body.light { background: #f5f6fa; color: #333; }
+    body.light header { background: #fff; border-bottom-color: #ddd; color: #222; }
+    body.light select, body.light button { background: #eee; color: #333; }
+    body.light select:hover, body.light button:hover { background: #d5d5d5; color: #222; }
+    body.light select { background: linear-gradient(to bottom, #eee 0%, #ccc 100%); color: #333; }
+    body.light select option { background: #eee; color: #333; }
+    body.light textarea { background-color: #fafafa; color: #222; box-shadow: inset 0 0 5px #bbb; }
+    body.light textarea:focus { box-shadow: inset 0 0 8px #3f51b5; }
+    .theme-toggle { cursor: pointer; font-size: 1.6rem; color: inherit; user-select: none; transition: color 0.3s ease; }
+    
+    /* AI Assistant Panel Styles */
+    .ai-panel {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 400px;
+      height: 100vh;
+      background: #1e1e1e;
+      box-shadow: -5px 0 15px rgba(0, 0, 0, 0.5);
+      transition: right 0.3s ease;
+      z-index: 1000;
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
     }
-    select:hover, button:hover {
-      background: #3b3b3b;
-      box-shadow: 0 0 8px 2px #64b5f6; /* subtle light blue glow */
+    .ai-panel.open {
+      right: 0;
     }
-    button:focus, select:focus {
-      outline: 2px solid #64b5f6;
-      box-shadow: 0 0 10px 3px #64b5f6;
-    }
-    header {
-      background: #1f1f1f;
-      padding: 1rem 2rem;
+    .ai-header {
+      padding: 1rem;
+      background: #2d2d2d;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid #282828;
+      border-bottom: 1px solid #444;
     }
-    header h1 {
-      font-weight: 700;
-      letter-spacing: 1.5px;
+    .ai-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    .ai-close {
+      background: none;
+      border: none;
+      color: #eee;
       font-size: 1.5rem;
-      user-select: none;
+      cursor: pointer;
     }
-    .controls {
+    .ai-actions {
       display: flex;
-      gap: 1rem;
-      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-bottom: 1px solid #444;
     }
-    select, button {
-      background: #272727;
+    .ai-btn {
+      background: #3a3a3a;
       border: none;
       color: #eee;
       padding: 0.5rem 1rem;
-      font-size: 1rem;
-      border-radius: 6px;
+      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    select:hover, button:hover {
-      background: #3b3b3b;
-      color: #fff;
-    }
-    button:focus, select:focus {
-      outline: 2px solid #64b5f6;
-    }
-    button i {
-      font-size: 1.3rem;
-      vertical-align: middle;
-    }
-    main {
-      flex: 1;
+      transition: background 0.3s;
       display: flex;
-      gap: 1.5rem;
-      padding: 1rem 2rem;
-      background: #1a1a1a;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
     }
-    .editor-container {
-      flex: 2;
-      background: #282c34;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    .ai-btn:hover {
+      background: #4a4a4a;
     }
-    #editor {
-      height: 100%;
-      min-height: 600px;
+    .ai-btn.active {
+      background: #64b5f6;
+      color: #000;
     }
-    .io-container {
+    .ai-content {
       flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      background: #222;
-      border-radius: 8px;
-      padding: 1rem;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
-      color: #ccc;
     }
-    label {
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 0.3rem;
-      user-select: none;
-    }
-    textarea {
-      resize: vertical;
-      min-height: 120px;
-      max-height: 250px;
-      width: 100%;
+    .ai-response {
+      flex: 1;
+      background: #2d2d2d;
       border-radius: 6px;
-      border: none;
-      padding: 0.8rem;
+      padding: 1rem;
+      overflow-y: auto;
       font-family: monospace;
-      font-size: 1rem;
-      background-color: #1e1e1e;
-      color: #ddd;
-      box-shadow: inset 0 0 5px #111;
-      transition: box-shadow 0.3s ease;
+      white-space: pre-wrap;
+      margin-bottom: 1rem;
     }
-    textarea:focus {
-      outline: none;
-      box-shadow: inset 0 0 8px #64b5f6;
+    .ai-input-container {
+      display: flex;
+      gap: 0.5rem;
     }
-    body.light {
-      background: #f5f6fa;
-      color: #333;
+    .ai-input {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #1e1e1e;
+      color: #eee;
     }
-    body.light header {
-      background: #fff;
-      border-bottom-color: #ddd;
-      color: #222;
-    }
-    body.light select, body.light button {
-      background: #eee;
-      color: #333;
-    }
-    body.light select:hover, body.light button:hover {
-      background: #d5d5d5;
-      color: #222;
-    }
-    body.light select {
-      background: linear-gradient(to bottom, #eee 0%, #ccc 100%);
-      color: #333;
-    }
-    body.light select option {
-      background: #eee;
-      color: #333;
-    }
-    body.light textarea {
-      background-color: #fafafa;
-      color: #222;
-      box-shadow: inset 0 0 5px #bbb;
-    }
-    body.light textarea:focus {
-      box-shadow: inset 0 0 8px #3f51b5;
-    }
-    .theme-toggle {
+    .ai-send {
+      background: #64b5f6;
+      border: none;
+      border-radius: 4px;
+      color: #000;
+      padding: 0 1rem;
       cursor: pointer;
-      font-size: 1.6rem;
-      color: inherit;
-      user-select: none;
-      transition: color 0.3s ease;
     }
-    button:hover, select:hover {
-      filter: none;
+    .ai-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
     }
+    .ai-overlay.open {
+      display: block;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #64b5f6;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
     @media (max-width: 768px) {
-      main {
-        flex-direction: column;
-        padding: 1rem;
-      }
-      .editor-container, .io-container {
-        flex: none;
+      main { flex-direction: column; padding: 1rem; }
+      .editor-container, .io-container { flex: none; width: 100%; min-height: 300px; }
+      #editor { min-height: 300px; }
+      .ai-panel {
         width: 100%;
-        min-height: 300px;
-      }
-      #editor {
-        min-height: 300px;
+        right: -100%;
       }
     }
   </style>
 </head>
 <body>
+  <div class="ai-overlay" id="aiOverlay"></div>
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-header">
+      <div class="ai-title">🤖 AI Assistant</div>
+      <button class="ai-close" id="aiClose">&times;</button>
+    </div>
+    <div class="ai-actions">
+      <button class="ai-btn" data-action="explain">
+        <i class="bi bi-chat-square-text"></i> Explain
+      </button>
+      <button class="ai-btn" data-action="optimize">
+        <i class="bi bi-lightning-charge"></i> Optimize
+      </button>
+      <button class="ai-btn" data-action="debug">
+        <i class="bi bi-bug"></i> Debug
+      </button>
+      <button class="ai-btn" data-action="tests">
+        <i class="bi bi-check-square"></i> Tests
+      </button>
+      <button class="ai-btn active" data-action="chat">
+        <i class="bi bi-chat-dots"></i> Chat
+      </button>
+    </div>
+    <div class="ai-content">
+      <div class="ai-response" id="aiResponse">Hello! I'm your AI coding assistant. How can I help you with your code today?</div>
+      <div class="ai-input-container">
+        <input type="text" class="ai-input" id="aiInput" placeholder="Ask something about your code...">
+        <button class="ai-send" id="aiSend"><i class="bi bi-send"></i></button>
+      </div>
+    </div>
+  </div>
+
   <header>
     <h1>Smart Code Compiler</h1>
     <div class="controls">
+      <button id="optimize" title="Go to Code Optimization">
+        <i class="bi bi-lightning-charge"></i> Compiler Phase Vizulizer
+      </button>
       <select id="langSelect" aria-label="Select programming language">
         <option disabled selected>Choose Language</option>
         <option value="Java">Java</option>
@@ -195,13 +246,20 @@
       </select>
       <button id="download" title="Download code"><i class="bi bi-download"></i></button>
       <button id="run" title="Run code"><i class="bi bi-play-fill"></i></button>
+      <button id="aiHelp" title="Get AI Help"><i class="bi bi-robot"></i> AI Help</button>
       <i id="themeToggle" class="bi bi-moon theme-toggle" title="Toggle theme"></i>
     </div>
   </header>
 
   <main>
     <section class="editor-container">
-      <textarea id="editor"></textarea>
+      <textarea id="editor">#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello, World!";
+    return 0;
+}</textarea>
     </section>
     <section class="io-container">
       <label for="input">Input</label>
@@ -211,14 +269,15 @@
     </section>
   </main>
 
-  <script src="codemirror-5.65.19/lib/codemirror.js"></script>
-  <script src="codemirror-5.65.19/mode/python/python.js"></script>
-  <script src="codemirror-5.65.19/mode/clike/clike.js"></script>
-  <script src="codemirror-5.65.19/addon/edit/closebrackets.js"></script>
-  <script src="codemirror-5.65.19/addon/hint/show-hint.js"></script>
-  <script src="codemirror-5.65.19/addon/hint/anyword-hint.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/anyword-hint.min.js"></script>
 
   <script>
+    // Initialize CodeMirror editor
     const editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
       mode: "text/x-c++src",
       theme: "dracula",
@@ -230,26 +289,32 @@
       }
     });
 
+    // API key for Gemini
+    const GEMINI_API_KEY = "AIzaSyBGN1kizkoMMGed8JYV3ksbUFqAHvK9s14";
+    const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
+    // Resize editor to fit window
     function resizeEditor() {
       const height = window.innerHeight - document.querySelector('header').offsetHeight - 48;
       editor.setSize('100%', height);
     }
-
     window.addEventListener('resize', resizeEditor);
     resizeEditor();
 
+    // Language selection
     const langSelect = document.getElementById("langSelect");
     langSelect.addEventListener("change", () => {
       const lang = langSelect.value;
       if (lang === "Sigma") {
-    window.location.href = "https://sigma-programming.vercel.app/";
-    return;
-  }
+        window.location.href = "https://sigma-programming.vercel.app/";
+        return;
+      }
       if (lang === "Java") editor.setOption("mode", "text/x-java");
       else if (lang === "Python") editor.setOption("mode", "text/x-python");
       else if (lang === "Cpp") editor.setOption("mode", "text/x-c++src");
     });
 
+    // Run code
     document.getElementById("run").addEventListener("click", async () => {
       const output = document.getElementById("output");
       output.value = "Running...";
@@ -275,6 +340,7 @@
       }
     });
 
+    // Download code
     document.getElementById("download").addEventListener("click", () => {
       const blob = new Blob([editor.getValue()], { type: "text/plain;charset=utf-8" });
       const a = document.createElement("a");
@@ -284,11 +350,180 @@
       a.remove();
     });
 
+    // Optimize code
+    document.getElementById("optimize").addEventListener("click", () => {
+      window.open("https://codeoptimization-hpjwhepw4lvbzg9e9ztkyj.streamlit.app/", "_blank");
+    });
+
+    // Theme toggle
     const themeToggle = document.getElementById("themeToggle");
     themeToggle.addEventListener("click", () => {
       document.body.classList.toggle("light");
       themeToggle.classList.toggle("bi-moon");
       themeToggle.classList.toggle("bi-brightness-high");
+    });
+
+    // AI Assistant functionality
+    const aiPanel = document.getElementById("aiPanel");
+    const aiOverlay = document.getElementById("aiOverlay");
+    const aiClose = document.getElementById("aiClose");
+    const aiHelp = document.getElementById("aiHelp");
+    const aiResponse = document.getElementById("aiResponse");
+    const aiInput = document.getElementById("aiInput");
+    const aiSend = document.getElementById("aiSend");
+    const aiButtons = document.querySelectorAll(".ai-btn");
+    let currentAction = "chat";
+
+    // Open AI panel
+    aiHelp.addEventListener("click", () => {
+      aiPanel.classList.add("open");
+      aiOverlay.classList.add("open");
+    });
+
+    // Close AI panel
+    aiClose.addEventListener("click", closeAIPanel);
+    aiOverlay.addEventListener("click", closeAIPanel);
+
+    function closeAIPanel() {
+      aiPanel.classList.remove("open");
+      aiOverlay.classList.remove("open");
+    }
+
+    // Handle AI action buttons
+    aiButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        aiButtons.forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+        currentAction = button.getAttribute("data-action");
+        
+        // Auto-generate prompt based on action
+        if (currentAction !== "chat") {
+          handleAIAction(currentAction);
+        }
+      });
+    });
+
+    // Send message on button click or Enter key
+    aiSend.addEventListener("click", sendAIMessage);
+    aiInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendAIMessage();
+    });
+
+    async function sendAIMessage() {
+      const message = aiInput.value.trim();
+      if (!message) return;
+      
+      aiInput.value = "";
+      addMessageToChat("user", message);
+      
+      // Show loading indicator
+      const loadingIndicator = document.createElement("div");
+      loadingIndicator.innerHTML = '<div class="loading"></div> AI is thinking...';
+      aiResponse.appendChild(loadingIndicator);
+      aiResponse.scrollTop = aiResponse.scrollHeight;
+      
+      try {
+        let prompt = "";
+        const code = editor.getValue();
+        const language = langSelect.value;
+        
+        if (currentAction === "chat") {
+          prompt = `I am working with ${language}.\nHere is my code:\n${code}\n\nMy question: ${message}`;
+        } else {
+          prompt = generatePrompt(currentAction, code, language, message);
+        }
+        
+        const response = await callGeminiAPI(prompt);
+        addMessageToChat("assistant", response);
+      } catch (error) {
+        addMessageToChat("assistant", `Error: ${error.message}`);
+      } finally {
+        // Remove loading indicator
+        aiResponse.removeChild(loadingIndicator);
+      }
+    }
+
+    function addMessageToChat(role, message) {
+      const messageElement = document.createElement("div");
+      messageElement.innerHTML = `<strong>${role === 'user' ? 'You' : 'AI'}:</strong> ${message}`;
+      messageElement.style.marginBottom = "1rem";
+      messageElement.style.padding = "0.5rem";
+      messageElement.style.background = role === 'user' ? '#2d2d2d' : '#3a3a3a';
+      messageElement.style.borderRadius = "4px";
+      aiResponse.appendChild(messageElement);
+      aiResponse.scrollTop = aiResponse.scrollHeight;
+    }
+
+    function generatePrompt(action, code, language, userInput = "") {
+      switch(action) {
+        case "explain":
+          return `Explain this ${language} code in detail:\n\n${code}`;
+        case "optimize":
+          return `Optimize this ${language} code and explain your improvements:\n\n${code}`;
+        case "debug":
+          return `Debug this ${language} code and suggest fixes. Code:\n\n${code}\n\nInput (if any): ${userInput}`;
+        case "tests":
+          return `Generate test cases for this ${language} code:\n\n${code}`;
+        default:
+          return `I need help with this ${language} code. Here's my code:\n\n${code}\n\nMy question: ${userInput}`;
+      }
+    }
+
+    async function handleAIAction(action) {
+      const code = editor.getValue();
+      const language = langSelect.value;
+      const prompt = generatePrompt(action, code, language);
+      
+      // Show loading indicator
+      const loadingIndicator = document.createElement("div");
+      loadingIndicator.innerHTML = '<div class="loading"></div> AI is thinking...';
+      aiResponse.appendChild(loadingIndicator);
+      aiResponse.scrollTop = aiResponse.scrollHeight;
+      
+      try {
+        const response = await callGeminiAPI(prompt);
+        addMessageToChat("assistant", response);
+      } catch (error) {
+        addMessageToChat("assistant", `Error: ${error.message}`);
+      } finally {
+        // Remove loading indicator
+        aiResponse.removeChild(loadingIndicator);
+      }
+    }
+
+    async function callGeminiAPI(prompt) {
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error("Unexpected response format from API");
+      }
+    }
+
+    // Close panel with Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && aiPanel.classList.contains("open")) {
+        closeAIPanel();
+      }
     });
   </script>
 </body>
